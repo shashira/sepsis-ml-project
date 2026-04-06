@@ -2,10 +2,10 @@
 
 ## Setup (Windows PowerShell)
 
-python -m venv venv
-.\venv\Scripts\Activate
-pip install -r requirements.txt
-python setup_check.py
+python -m venv venv <br>
+.\venv\Scripts\Activate <br>
+pip install -r requirements.txt <br>
+python setup_check.py <br>
 
 ## Structure
 data/ → datasets  
