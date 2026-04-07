@@ -38,13 +38,23 @@ lab_df = lab_df.dropna(subset=["patient_id", "charttime"])
 lab_df["lab_name"] = lab_df["lab_name"].astype(str).str.strip().str.lower()
 lab_df["lab_value"] = pd.to_numeric(lab_df["lab_value"], errors="coerce")
 
-lab_filtered = lab_df[lab_df["lab_name"].isin(["wbc", "lactate"])].copy()
+# Handle common lab-name variations
+lab_name_map = {
+    "wbc": "wbc",
+    "white blood cells": "wbc",
+    "wbc count": "wbc",
+    "lactate": "lactate",
+    "lactic acid": "lactate"
+}
+
+lab_df["lab_name_clean"] = lab_df["lab_name"].map(lab_name_map)
+lab_filtered = lab_df[lab_df["lab_name_clean"].isin(["wbc", "lactate"])].copy()
 
 # Convert long lab table to wide format
 lab_wide = (
     lab_filtered.pivot_table(
         index=["patient_id", "charttime"],
-        columns="lab_name",
+        columns="lab_name_clean",
         values="lab_value",
         aggfunc="last"
     )
@@ -52,6 +62,7 @@ lab_wide = (
 )
 
 lab_wide.columns.name = None
+lab_wide = lab_wide.rename(columns={"charttime": "charttime_lab"})
 
 # -----------------------------
 # Merge patient info into vitals
@@ -65,8 +76,7 @@ merged = vital_df.merge(patient_df, on="patient_id", how="left")
 temp = merged.merge(
     lab_wide,
     on="patient_id",
-    how="left",
-    suffixes=("", "_lab")
+    how="left"
 )
 
 # Keep only rows where lab time is earlier than or equal to vital time
@@ -74,7 +84,6 @@ temp = temp[temp["charttime_lab"].isna() | (temp["charttime_lab"] <= temp["chart
 
 # For each vital row, keep the latest earlier lab row
 temp = temp.sort_values(["patient_id", "charttime", "charttime_lab"])
-
 temp = temp.groupby(["patient_id", "charttime"], as_index=False).last()
 
 # -----------------------------
@@ -109,9 +118,7 @@ final_cols = [
 final_df = temp[final_cols].copy()
 
 # -----------------------------
-# If Member 2 used p000001 format
-# keep this block
-# If not, remove it
+# Convert patient_id to p000001 format
 # -----------------------------
 unique_patients = sorted(final_df["patient_id"].dropna().unique())
 patient_id_map = {
@@ -144,9 +151,35 @@ for col in feature_cols:
     final_df[col] = final_df[col].fillna(final_df[col].median())
 
 # -----------------------------
-# Add label column to match output schema
+# Derive sepsis label
 # -----------------------------
-final_df["sepsis_label"] = np.nan
+# Simple rule-based proxy:
+# Infection/inflammation evidence:
+#   - wbc > 12 or wbc < 4
+#   - OR lactate > 2
+#
+# Organ dysfunction / instability:
+#   - sbp < 90
+#   - OR spo2 < 90
+#   - OR resp_rate > 22
+#   - OR heart_rate > 100
+#
+# If both are present -> sepsis_label = 1 else 0
+
+infection_flag = (
+    (final_df["wbc"] > 12) |
+    (final_df["wbc"] < 4) |
+    (final_df["lactate"] > 2)
+)
+
+organ_flag = (
+    (final_df["sbp"] < 90) |
+    (final_df["spo2"] < 90) |
+    (final_df["resp_rate"] > 22) |
+    (final_df["heart_rate"] > 100)
+)
+
+final_df["sepsis_label"] = np.where(infection_flag & organ_flag, 1, 0)
 
 # -----------------------------
 # Final column order
@@ -174,4 +207,7 @@ final_df.to_csv(OUTPUT_FILE, index=False)
 print("Done")
 print("Saved to:", OUTPUT_FILE)
 print("Shape:", final_df.shape)
+print("\nSepsis label counts:")
+print(final_df["sepsis_label"].value_counts(dropna=False))
+print("\nSample output:")
 print(final_df.head())
