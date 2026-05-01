@@ -10,7 +10,7 @@ Usage:
     python scripts/integrate_datasets.py
 
 Output:
-    data/integrated_dataset.csv
+    data/processed/integrated_dataset.csv
 """
 
 import os
@@ -23,9 +23,16 @@ import numpy as np
 # ---------------------------------------------------------------------------
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-PHYSIONET_PATH = os.path.join(ROOT, "scripts", "physionet", "physionet_cleaned.csv")
-EICU_PATH      = os.path.join(ROOT, "eicu_final_output.csv")
-OUTPUT_PATH    = os.path.join(ROOT, "data", "integrated_dataset.csv")
+PHYSIONET_PATH_CANDIDATES = [
+    os.path.join(ROOT, "data", "raw", "physionet_cleaned.csv"),                   # standardized location
+    os.path.join(ROOT, "scripts", "physionet", "physionet_cleaned.csv"),           # legacy location
+]
+OUTPUT_PATH    = os.path.join(ROOT, "data", "processed", "integrated_dataset.csv")
+EICU_PATH_CANDIDATES = [
+    os.path.join(ROOT, "data", "raw", "eicu_final_output.csv"),                    # standardized location
+    os.path.join(ROOT, "scripts", "eICU", "eicu_dataset", "eicu_final_output.csv"),  # current repo layout
+    os.path.join(ROOT, "eicu_final_output.csv"),                                      # legacy layout
+]
 
 # ---------------------------------------------------------------------------
 # Column definitions (shared with constants.py)
@@ -195,12 +202,30 @@ def build_summary(df: pd.DataFrame, name: str) -> dict:
     }
 
 
+def resolve_eicu_path() -> str:
+    """Return first existing eICU CSV path from known locations."""
+    for path in EICU_PATH_CANDIDATES:
+        if os.path.exists(path):
+            return path
+    return EICU_PATH_CANDIDATES[0]
+
+
+def resolve_physionet_path() -> str:
+    """Return first existing PhysioNet cleaned CSV path from known locations."""
+    for path in PHYSIONET_PATH_CANDIDATES:
+        if os.path.exists(path):
+            return path
+    return PHYSIONET_PATH_CANDIDATES[0]
+
+
 # ---------------------------------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------------------------------
 
 def main():
-    os.makedirs(os.path.join(ROOT, "data"), exist_ok=True)
+    os.makedirs(os.path.join(ROOT, "data", "processed"), exist_ok=True)
+    eicu_path = resolve_eicu_path()
+    physionet_path = resolve_physionet_path()
 
     # ------------------------------------------------------------------
     # 1. Load
@@ -210,13 +235,13 @@ def main():
     print("=" * 60)
 
     print(f"\n[1/7] Loading datasets...")
-    for path, label in [(PHYSIONET_PATH, "PhysioNet"), (EICU_PATH, "eICU")]:
+    for path, label in [(physionet_path, "PhysioNet"), (eicu_path, "eICU")]:
         if not os.path.exists(path):
             print(f"  [ERROR] File not found: {path}", file=sys.stderr)
             sys.exit(1)
 
-    pn   = pd.read_csv(PHYSIONET_PATH)
-    eicu = pd.read_csv(EICU_PATH)
+    pn   = pd.read_csv(physionet_path)
+    eicu = pd.read_csv(eicu_path)
     print(f"  PhysioNet loaded : {pn.shape[0]:,} rows, {pn.shape[1]} columns")
     print(f"  eICU loaded      : {eicu.shape[0]:,} rows, {eicu.shape[1]} columns")
 

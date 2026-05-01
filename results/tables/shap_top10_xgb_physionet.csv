@@ -1,0 +1,11 @@
+,mean_abs_shap
+temperature_min,0.3891956
+resp_rate_min,0.37339568
+wbc_std,0.35367948
+wbc_slope,0.31448793
+dbp_std,0.22915159
+temperature_slope,0.18716568
+wbc_min,0.17160498
+heart_rate_min,0.16947864
+sbp_std,0.14586909
+spo2_std,0.14149056

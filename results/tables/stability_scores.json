@@ -1,0 +1,34 @@
+[
+  {
+    "comparison": "LR vs XGBoost (PhysioNet)",
+    "status": "DONE",
+    "top_k": 10,
+    "overlap": 0.3,
+    "spearman_rho": -0.0525328330206379,
+    "stability_score": 0.12373358348968104
+  },
+  {
+    "comparison": "LR vs XGBoost (eICU)",
+    "status": "PENDING",
+    "top_k": 10,
+    "overlap": null,
+    "spearman_rho": null,
+    "stability_score": null
+  },
+  {
+    "comparison": "XGBoost: PhysioNet vs eICU",
+    "status": "PENDING",
+    "top_k": 10,
+    "overlap": null,
+    "spearman_rho": null,
+    "stability_score": null
+  },
+  {
+    "comparison": "LR: PhysioNet vs eICU",
+    "status": "PENDING",
+    "top_k": 10,
+    "overlap": null,
+    "spearman_rho": null,
+    "stability_score": null
+  }
+]

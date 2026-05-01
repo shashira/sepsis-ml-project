@@ -1,0 +1,20 @@
+{
+  "input_file": "/Users/arpanasingh/Desktop/SJSU/Spring2026/ML/Project/sepsis-ml-project/data/features/physionet_features_full.csv",
+  "n_rows": 20317,
+  "n_features": 40,
+  "train_size": 16253,
+  "test_size": 4064,
+  "train_sepsis_rate": 0.0880452839475789,
+  "test_sepsis_rate": 0.08809055118110236,
+  "scale_pos_weight": 10.35779175401817,
+  "logistic_regression": {
+    "auroc": 0.8461056658838001,
+    "auprc": 0.5005151211190914,
+    "f1": 0.4079147640791476
+  },
+  "xgboost": {
+    "auroc": 0.9157247646124208,
+    "auprc": 0.6547843187681318,
+    "f1": 0.535752401280683
+  }
+}

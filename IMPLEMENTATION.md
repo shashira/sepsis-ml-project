@@ -41,9 +41,21 @@
 ```
 sepsis-ml-project/
 ├── data/
-│   ├── integrated_dataset.csv        ← Phase 3 output (unified)
-│   ├── physionet_features.csv        ← Phase 4 output
-│   └── eicu_features.csv             ← Phase 4 output
+│   ├── raw/
+│   │   ├── physionet_raw.csv
+│   │   ├── physionet_cleaned.csv
+│   │   └── eicu_final_output.csv
+│   ├── processed/
+│   │   └── integrated_dataset.csv    ← Phase 3 output (unified)
+│   └── features/                     ← Phase 4 outputs
+│       ├── physionet_features_full.csv
+│       ├── physionet_features_6h.csv
+│       ├── physionet_features_12h.csv
+│       ├── physionet_features_24h.csv
+│       ├── eicu_features_full.csv
+│       ├── eicu_features_6h.csv
+│       ├── eicu_features_12h.csv
+│       └── eicu_features_24h.csv
 ├── scripts/
 │   ├── physionet/
 │   │   ├── load_physionet.py
@@ -54,18 +66,17 @@ sepsis-ml-project/
 │   ├── utils/
 │   │   ├── constants.py              ← shared column names
 │   │   └── preprocessing_utils.py   ← shared ffill / median fill
-│   ├── integrate_datasets.py         ← Phase 3 integration ✓ done
-│   ├── feature_engineering.py        ← Phase 4
-│   ├── train_models.py               ← Phase 5
-│   ├── evaluate_models.py            ← Phase 6
-│   ├── shap_explanations.py          ← Phase 7
-│   └── stability_score.py            ← Phase 8
+│   ├── integrate_datasets.py         ← Phase 3 ✓ complete
+│   ├── feature_engineering.py        ← Phase 4 ✓ complete
+│   ├── train_models.py               ← Phase 5 ✓ complete
+│   ├── evaluate_models.py            ← Phase 6 ✓ complete
+│   ├── shap_explanations.py          ← Phase 7 ✓ complete
+│   └── stability_score.py            ← Phase 8 ✓ complete
 ├── notebooks/
-│   └── exploration.ipynb
+│   └── pipeline_audit.ipynb          ← end-to-end audit/demo notebook
 ├── results/
 │   ├── figures/
 │   └── tables/
-├── eicu_final_output.csv             ← raw eICU export
 ├── requirements.txt
 ├── setup_check.py
 ├── README.md
@@ -207,10 +218,10 @@ Both datasets must produce a table with exactly these column names:
 6. Median fill any remaining NaNs
 7. Derive the sepsis label from diagnosis codes (apacheadmissiondx or ICD codes)
    — do NOT leave sepsis_label blank; the integration script cannot fill it accurately
-8. Save to eicu_final_output.csv (root of repo)
+8. Save to `data/raw/eicu_final_output.csv`
 ```
 
-> **Important:** The current `eicu_final_output.csv` has `sepsis_label` entirely empty. The integration script uses a qSOFA proxy as a fallback, but the proper label must come from the `diagnosis` table. Member 3 should fix this before Phase 5.
+> **Important:** `data/raw/eicu_final_output.csv` currently contains labels, but the patient-level sepsis rate is unusually high (~68%). This should be validated against diagnosis-code logic before final cross-dataset conclusions.
 
 ### Integration (`scripts/integrate_datasets.py`) ✓ Complete
 
@@ -226,7 +237,7 @@ What the script does automatically:
 - Derives a qSOFA proxy label if `sepsis_label` is missing (eICU fallback only)
 - Prefixes patient IDs (`pn_p000001`, `eicu_p000001`) to prevent collisions
 - Adds a `source` column (`physionet` or `eicu`)
-- Concatenates and saves to `data/integrated_dataset.csv`
+- Concatenates and saves to `data/processed/integrated_dataset.csv`
 - Prints a side-by-side validation summary
 
 **Expected output:**
@@ -234,8 +245,8 @@ What the script does automatically:
 | Dataset | Rows | Patients | Sepsis Rate |
 |---------|------|----------|-------------|
 | PhysioNet | 789,484 | 20,317 | ~8.8% |
-| eICU | 15,922 | 125 | ~10% (with real labels) |
-| Integrated | ~805,406 | ~20,442 | ~9.0% |
+| eICU | 16,638 | 132 | currently ~68% (needs validation) |
+| Integrated | 806,122 | 20,449 | ~9.2% |
 
 ---
 
@@ -243,8 +254,8 @@ What the script does automatically:
 
 **Owner:** Member 1 or 2 | **Deadline:** Day 4–5  
 **Script:** `scripts/feature_engineering.py`  
-**Input:** `data/integrated_dataset.csv`  
-**Output:** `data/physionet_features.csv`, `data/eicu_features.csv`
+**Input:** `data/processed/integrated_dataset.csv`  
+**Output:** `data/features/physionet_features_*.csv`, `data/features/eicu_features_*.csv`
 
 ### Goal
 
@@ -306,6 +317,9 @@ def compute_patient_features(group, suffix=""):
 
 **Owner:** Member 2 (PhysioNet), Member 3 (eICU) | **Deadline:** Day 5–7  
 **Script:** `scripts/train_models.py`
+
+**Current status:** ✅ Implemented and validated on PhysioNet (`full` window).
+Artifacts saved to `results/models/` and `results/tables/training_summary.json`.
 
 ### Train/Test Split
 
@@ -370,6 +384,9 @@ xgb_model.fit(X_train, y_train)
 **Owner:** Member 4 | **Deadline:** Day 7–8  
 **Script:** `scripts/evaluate_models.py`
 
+**Current status:** ✅ Implemented and validated.
+Outputs: `results/tables/evaluation_metrics.csv` and `.json`.
+
 ### Metrics
 
 | Metric | Why it matters |
@@ -417,6 +434,9 @@ Repeat evaluation at each time window (6h, 12h, 24h feature sets) to show how ea
 **Owner:** Member 2 or 3 | **Deadline:** Day 8–9  
 **Script:** `scripts/shap_explanations.py`
 
+**Current status:** ✅ Implemented for PhysioNet.
+Outputs include SHAP importance tables (`results/tables/`) and SHAP bar plots (`results/figures/`).
+
 ### Steps
 
 ```python
@@ -453,6 +473,9 @@ top10 = mean_abs_shap.head(10)
 
 **Owner:** Member 4 | **Deadline:** Day 9–10  
 **Script:** `scripts/stability_score.py`
+
+**Current status:** ✅ Implemented.
+Currently computes available comparisons and marks unavailable ones as `PENDING` until eICU SHAP artifacts are generated.
 
 ### Formula
 
@@ -527,7 +550,7 @@ Low scores (< 0.4) = explanations are unreliable despite high accuracy.
 
 **Owner:** Member 3 | **Deadline:** Day 10–11
 
-Run Phases 4–8 again using only the eICU rows from `data/integrated_dataset.csv`.
+Run Phases 4–8 again using only the eICU rows from `data/processed/integrated_dataset.csv`.
 
 ```python
 eicu_df = integrated_df[integrated_df["source"] == "eicu"].copy()

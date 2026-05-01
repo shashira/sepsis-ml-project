@@ -3,16 +3,16 @@ Phase 4 — Feature Engineering
 Converts the time-series integrated dataset (one row per hour per patient)
 into flat per-patient feature tables (one row per patient) suitable for ML.
 
-Input  : data/integrated_dataset.csv
+Input  : data/processed/integrated_dataset.csv
 Outputs (one file per dataset × time window):
-  data/physionet_features_full.csv   — full pre-onset stay  (40 features)
-  data/physionet_features_6h.csv     — last  6 h before onset (40 features)
-  data/physionet_features_12h.csv    — last 12 h before onset (40 features)
-  data/physionet_features_24h.csv    — last 24 h before onset (40 features)
-  data/eicu_features_full.csv
-  data/eicu_features_6h.csv
-  data/eicu_features_12h.csv
-  data/eicu_features_24h.csv
+  data/features/physionet_features_full.csv   — full pre-onset stay  (40 features)
+  data/features/physionet_features_6h.csv     — last  6 h before onset (40 features)
+  data/features/physionet_features_12h.csv    — last 12 h before onset (40 features)
+  data/features/physionet_features_24h.csv    — last 24 h before onset (40 features)
+  data/features/eicu_features_full.csv
+  data/features/eicu_features_6h.csv
+  data/features/eicu_features_12h.csv
+  data/features/eicu_features_24h.csv
 
 Each file has 40 features: 8 vitals × 5 statistics (mean, max, min, std, slope).
 
@@ -44,7 +44,8 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 # Paths
 # ---------------------------------------------------------------------------
 ROOT       = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INPUT_PATH = os.path.join(ROOT, "data", "integrated_dataset.csv")
+INPUT_PATH = os.path.join(ROOT, "data", "processed", "integrated_dataset.csv")
+FEATURES_DIR = os.path.join(ROOT, "data", "features")
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -191,7 +192,7 @@ def print_summary(df: pd.DataFrame, name: str) -> None:
 
 
 def main():
-    os.makedirs(os.path.join(ROOT, "data"), exist_ok=True)
+    os.makedirs(FEATURES_DIR, exist_ok=True)
 
     print("=" * 60)
     print("PHASE 4 — Feature Engineering")
@@ -226,7 +227,7 @@ def main():
 
         for win_label, n_hours in WINDOWS:
             out_path = os.path.join(ROOT, "data",
-                                    f"{source}_features_{win_label}.csv")
+                                    "features", f"{source}_features_{win_label}.csv")
             feat_df  = build_feature_table(df, source, win_label, n_hours)
             feat_df.to_csv(out_path, index=False)
 
@@ -258,7 +259,7 @@ def main():
         if only_eicu:
             print(f"  [WARN] Only in eICU      : {sorted(only_eicu)}")
 
-    print(f"\nFeature engineering complete.  8 files saved to data/")
+    print(f"\nFeature engineering complete.  8 files saved to data/features/")
     print(f"  physionet_features_full.csv  ← use this for the main model (Phase 5)")
     print(f"  physionet_features_6h.csv")
     print(f"  physionet_features_12h.csv")
